@@ -69,8 +69,8 @@ The mod writes its log to `Bin/SS2CoopLobby.log`.
 
 ## Building
 
-Requirements: GNU make and LLVM (`clang`, `lld-link`, `llvm-dlltool`, `llvm-objdump`), tested
-with LLVM 23. No Windows SDK, no C runtime and no file from the game are needed.
+Requirements: GNU make and LLVM (`clang`, `lld-link`, `llvm-dlltool`, `llvm-objdump`), known to
+work with LLVM 21 and 23. No Windows SDK, no C runtime and no file from the game are needed.
 
 ```
 make

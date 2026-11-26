@@ -5,7 +5,8 @@
 #   out/Bin/SS2CoopLobby.ini      its settings
 #   out/Content/SeriousSam2.mod   the game's module list, with SS2CoopLobby added
 #
-# Requirements: GNU make, clang, lld-link, llvm-dlltool and llvm-objdump (LLVM 15 or later).
+# Requirements: GNU make, clang, lld-link, llvm-dlltool and llvm-objdump (known to work with LLVM 21
+# and 23).
 # Nothing from the game is needed: the mod looks up the game's functions when the game loads it.
 
 CLANG   ?= clang
@@ -44,11 +45,12 @@ $(OBJ)/%.obj: src/%.cpp $(HDRS) | $(OBJ)
 $(OBJ)/%.lib: def/%.def | $(OBJ)
 	$(DLLTOOL) -k -m i386 -d $< -l $@
 
-# Without stack probes, a stack frame of 4 KiB or more could skip the guard page and crash on
-# Windows (Wine commits the whole stack, so it would not show there): such frames are refused.
+# Without stack probes, a stack frame of 4 KiB or more could skip the stack's guard page and crash
+# on Windows: such frames are refused (and the build fails if the disassembly cannot be made).
 $(DLL): $(OBJS) $(LIBS) | $(OUT)/Bin
 	$(LLD) $(LDFLAGS) /out:$@ $(OBJS) $(LIBS)
-	@if $(OBJDUMP) -d --no-show-raw-insn $@ | grep -qiE 'subl?[[:space:]]+\$$0x[0-9a-f]{4,},[[:space:]]*%esp'; then \
+	@asm=$$($(OBJDUMP) -d --no-show-raw-insn $@) || exit 1; \
+	if printf '%s\n' "$$asm" | grep -qiE 'subl?[[:space:]]+\$$0x[0-9a-f]{4,},[[:space:]]*%esp'; then \
 	  echo "error: stack frame of 4 KiB or more in $@" >&2; exit 1; fi
 
 $(INI): dist/Bin/SS2CoopLobby.ini | $(OUT)/Bin
