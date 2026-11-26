@@ -1,0 +1,21 @@
+; Functions of kernel32.dll used by SS2CoopLobby.dll (import library made by llvm-dlltool -k).
+LIBRARY kernel32.dll
+EXPORTS
+GetModuleHandleA@4
+GetProcAddress@8
+VirtualProtect@16
+VirtualAlloc@16
+FlushInstructionCache@12
+GetCurrentProcess@0
+GetTickCount@0
+CreateFileA@28
+WriteFile@20
+CloseHandle@4
+SetFilePointer@16
+GetModuleFileNameA@12
+GetPrivateProfileIntA@16
+GetPrivateProfileStringA@24
+OutputDebugStringA@4
+GetLocalTime@4
+GetCommandLineA@0
+GetUserDefaultLCID@0

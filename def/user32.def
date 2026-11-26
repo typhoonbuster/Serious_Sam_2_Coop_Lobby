@@ -1,0 +1,5 @@
+; Functions of user32.dll used by SS2CoopLobby.dll (import library made by llvm-dlltool -k).
+LIBRARY user32.dll
+EXPORTS
+GetAsyncKeyState@4
+wsprintfA

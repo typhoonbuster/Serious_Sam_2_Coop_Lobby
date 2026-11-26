@@ -1,0 +1,4 @@
+; The SEH handler used by __try/__except, taken from the CRT the game already loads (Bin/msvcr71.dll).
+LIBRARY msvcr71.dll
+EXPORTS
+_except_handler3

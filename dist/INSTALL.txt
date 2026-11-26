@@ -1,0 +1,132 @@
+SERIOUS SAM 2 COOP LOBBY
+English - Français - Español - Deutsch - Русский
+
+
+=== ENGLISH ===
+
+Requirements: Serious Sam 2 on Steam, version 2.224. Every player needs the mod.
+Close the game before installing.
+
+Game folder: in Steam, right-click Serious Sam 2 > Manage > Browse local files.
+It contains the Bin and Content folders (on Linux, usually
+~/.local/share/Steam/steamapps/common/Serious Sam 2).
+
+Installers (recommended), on the same download page:
+- Windows: run SS2CoopLobby-Setup-<version>.exe and choose the game folder.
+- Linux: run "sh SS2CoopLobby-Setup-<version>.sh" in a terminal and choose the game folder.
+
+Manual installation with this archive:
+1. Copy Bin/SS2CoopLobby.dll and Bin/SS2CoopLobby.ini into the game's Bin folder.
+2. Copy Content/SeriousSam2.mod into the game's Content folder.
+   If a SeriousSam2.mod is already there, keep it and add the line "SS2CoopLobby"
+   to its MODULES list, before the final ";".
+
+Update: replace Bin/SS2CoopLobby.dll.
+Uninstall: delete Bin/SS2CoopLobby.dll, Bin/SS2CoopLobby.ini, Bin/SS2CoopLobby.log
+and Content/SeriousSam2.mod (or remove the "SS2CoopLobby" line you added).
+
+Settings: Bin/SS2CoopLobby.ini (language, lobby, cinematics). Log: Bin/SS2CoopLobby.log.
+
+
+=== FRANÇAIS ===
+
+Prérequis : Serious Sam 2 sur Steam, version 2.224. Tous les joueurs doivent avoir le mod.
+Fermez le jeu avant l'installation.
+
+Dossier du jeu : dans Steam, clic droit sur Serious Sam 2 > Gérer > Parcourir les fichiers locaux.
+Il contient les dossiers Bin et Content (sous Linux, en général
+~/.local/share/Steam/steamapps/common/Serious Sam 2).
+
+Installateurs (recommandés), sur la même page de téléchargement :
+- Windows : lancez SS2CoopLobby-Setup-<version>.exe et choisissez le dossier du jeu.
+- Linux : lancez « sh SS2CoopLobby-Setup-<version>.sh » dans un terminal et choisissez le dossier du jeu.
+
+Installation manuelle avec cette archive :
+1. Copiez Bin/SS2CoopLobby.dll et Bin/SS2CoopLobby.ini dans le dossier Bin du jeu.
+2. Copiez Content/SeriousSam2.mod dans le dossier Content du jeu.
+   S'il y a déjà un SeriousSam2.mod, gardez-le et ajoutez la ligne « SS2CoopLobby »
+   à sa liste MODULES, avant le « ; » final.
+
+Mise à jour : remplacez Bin/SS2CoopLobby.dll.
+Désinstallation : supprimez Bin/SS2CoopLobby.dll, Bin/SS2CoopLobby.ini, Bin/SS2CoopLobby.log
+et Content/SeriousSam2.mod (ou retirez la ligne « SS2CoopLobby » que vous aviez ajoutée).
+
+Réglages : Bin/SS2CoopLobby.ini (langue, salon, cinématiques). Journal : Bin/SS2CoopLobby.log.
+
+
+=== ESPAÑOL ===
+
+Requisitos: Serious Sam 2 en Steam, versión 2.224. Todos los jugadores necesitan el mod.
+Cierre el juego antes de instalar.
+
+Carpeta del juego: en Steam, clic derecho en Serious Sam 2 > Administrar > Ver archivos locales.
+Contiene las carpetas Bin y Content (en Linux, normalmente
+~/.local/share/Steam/steamapps/common/Serious Sam 2).
+
+Instaladores (recomendados), en la misma página de descarga:
+- Windows: ejecute SS2CoopLobby-Setup-<version>.exe y elija la carpeta del juego.
+- Linux: ejecute "sh SS2CoopLobby-Setup-<version>.sh" en una terminal y elija la carpeta del juego.
+
+Instalación manual con este archivo:
+1. Copie Bin/SS2CoopLobby.dll y Bin/SS2CoopLobby.ini en la carpeta Bin del juego.
+2. Copie Content/SeriousSam2.mod en la carpeta Content del juego.
+   Si ya hay un SeriousSam2.mod, consérvelo y añada la línea "SS2CoopLobby"
+   a su lista MODULES, antes del ";" final.
+
+Actualización: sustituya Bin/SS2CoopLobby.dll.
+Desinstalación: borre Bin/SS2CoopLobby.dll, Bin/SS2CoopLobby.ini, Bin/SS2CoopLobby.log
+y Content/SeriousSam2.mod (o quite la línea "SS2CoopLobby" que añadió).
+
+Ajustes: Bin/SS2CoopLobby.ini (idioma, sala, cinemáticas). Registro: Bin/SS2CoopLobby.log.
+
+
+=== DEUTSCH ===
+
+Voraussetzungen: Serious Sam 2 auf Steam, Version 2.224. Alle Spieler brauchen die Mod.
+Schließen Sie das Spiel vor der Installation.
+
+Spielordner: in Steam Rechtsklick auf Serious Sam 2 > Verwalten > Lokale Dateien durchsuchen.
+Er enthält die Ordner Bin und Content (unter Linux meist
+~/.local/share/Steam/steamapps/common/Serious Sam 2).
+
+Installationsprogramme (empfohlen), auf derselben Downloadseite:
+- Windows: SS2CoopLobby-Setup-<version>.exe starten und den Spielordner wählen.
+- Linux: "sh SS2CoopLobby-Setup-<version>.sh" in einem Terminal starten und den Spielordner wählen.
+
+Manuelle Installation mit diesem Archiv:
+1. Bin/SS2CoopLobby.dll und Bin/SS2CoopLobby.ini in den Ordner Bin des Spiels kopieren.
+2. Content/SeriousSam2.mod in den Ordner Content des Spiels kopieren.
+   Liegt dort schon eine SeriousSam2.mod, diese behalten und die Zeile "SS2CoopLobby"
+   in ihre MODULES-Liste einfügen, vor dem abschließenden ";".
+
+Aktualisieren: Bin/SS2CoopLobby.dll ersetzen.
+Deinstallieren: Bin/SS2CoopLobby.dll, Bin/SS2CoopLobby.ini, Bin/SS2CoopLobby.log
+und Content/SeriousSam2.mod löschen (oder die hinzugefügte Zeile "SS2CoopLobby" entfernen).
+
+Einstellungen: Bin/SS2CoopLobby.ini (Sprache, Lobby, Zwischensequenzen). Protokoll: Bin/SS2CoopLobby.log.
+
+
+=== РУССКИЙ ===
+
+Требования: Serious Sam 2 в Steam, версия 2.224. Мод нужен всем игрокам.
+Перед установкой закройте игру.
+
+Папка игры: в Steam щелкните правой кнопкой по Serious Sam 2 > Управление > Просмотреть локальные файлы.
+В ней находятся папки Bin и Content (в Linux обычно
+~/.local/share/Steam/steamapps/common/Serious Sam 2).
+
+Установщики (рекомендуется), на той же странице загрузки:
+- Windows: запустите SS2CoopLobby-Setup-<version>.exe и выберите папку игры.
+- Linux: выполните в терминале «sh SS2CoopLobby-Setup-<version>.sh» и выберите папку игры.
+
+Ручная установка из этого архива:
+1. Скопируйте Bin/SS2CoopLobby.dll и Bin/SS2CoopLobby.ini в папку Bin игры.
+2. Скопируйте Content/SeriousSam2.mod в папку Content игры.
+   Если SeriousSam2.mod там уже есть, оставьте его и добавьте строку «SS2CoopLobby»
+   в список MODULES, перед последним «;».
+
+Обновление: замените Bin/SS2CoopLobby.dll.
+Удаление: удалите Bin/SS2CoopLobby.dll, Bin/SS2CoopLobby.ini, Bin/SS2CoopLobby.log
+и Content/SeriousSam2.mod (или уберите добавленную строку «SS2CoopLobby»).
+
+Настройки: Bin/SS2CoopLobby.ini (язык, лобби, видеоролики). Журнал: Bin/SS2CoopLobby.log.

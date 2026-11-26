@@ -1,0 +1,559 @@
+# Builds the mod, its Windows installer (NSIS), its Linux installer (makeself) and a zip of the files
+# with INSTALL.txt.
+# - Run by hand (Actions tab > Release > Run workflow): the files are attached to the run as an artifact.
+# - Pushing a tag such as v1.0.0 also publishes them as a GitHub release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang lld llvm nsis makeself zip
+          echo "$(llvm-config --bindir)" >> "$GITHUB_PATH"
+
+      - name: Version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v="$GITHUB_REF_NAME"; else v="dev-${GITHUB_SHA::7}"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      - name: Build the mod
+        run: make
+
+      - name: Build the Windows installer
+        run: |
+          cat > "$RUNNER_TEMP/installer.nsi" <<'EOF'
+          ; SS2CoopLobby installer.
+          ; 1. asks for the Serious Sam 2 folder (the one holding Bin and Content);
+          ; 2. starts without administrator rights, and restarts itself elevated only when that
+          ;    folder cannot be written (for instance under Program Files);
+          ; 3. copies Bin\SS2CoopLobby.dll, and Bin\SS2CoopLobby.ini unless one exists already;
+          ; 4. creates Content\SeriousSam2.mod, or adds SS2CoopLobby to an existing one.
+          Unicode true
+          ManifestDPIAware true
+          RequestExecutionLevel user
+          SetCompressor /SOLID lzma
+
+          !include "MUI2.nsh"
+          !include "LogicLib.nsh"
+          !include "FileFunc.nsh"
+          !include "StrFunc.nsh"
+          ${StrLoc}
+
+          Name "Serious Sam 2 Coop Lobby"
+          OutFile "${OUTFILE}"
+          InstallDir ""
+          ShowInstDetails show
+          BrandingText "SS2CoopLobby ${VERSION}"
+
+          Var Elevated
+
+          !define MUI_DIRECTORYPAGE_TEXT_TOP "$(DirTop)"
+          !define MUI_PAGE_CUSTOMFUNCTION_PRE DirPre
+          !define MUI_PAGE_CUSTOMFUNCTION_LEAVE DirLeave
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_PAGE_FINISH
+
+          ; The first language is the fallback; otherwise Windows' language is used.
+          !insertmacro MUI_LANGUAGE "English"
+          !insertmacro MUI_LANGUAGE "French"
+          !insertmacro MUI_LANGUAGE "Spanish"
+          !insertmacro MUI_LANGUAGE "German"
+          !insertmacro MUI_LANGUAGE "Russian"
+
+          LangString DirTop ${LANG_ENGLISH} "Select the Serious Sam 2 folder: the one that contains the Bin and Content folders. Close the game before installing."
+          LangString DirTop ${LANG_FRENCH} "Choisissez le dossier de Serious Sam 2 : celui qui contient les dossiers Bin et Content. Fermez le jeu avant l'installation."
+          LangString DirTop ${LANG_SPANISH} "Elija la carpeta de Serious Sam 2: la que contiene las carpetas Bin y Content. Cierre el juego antes de instalar."
+          LangString DirTop ${LANG_GERMAN} "Wählen Sie den Ordner von Serious Sam 2, der die Ordner Bin und Content enthält. Schließen Sie das Spiel vor der Installation."
+          LangString DirTop ${LANG_RUSSIAN} "Выберите папку Serious Sam 2 — ту, в которой находятся папки Bin и Content. Перед установкой закройте игру."
+
+          LangString NotSs2 ${LANG_ENGLISH} "This folder does not contain Serious Sam 2 (Bin\Sam2Game.dll is missing)."
+          LangString NotSs2 ${LANG_FRENCH} "Ce dossier ne contient pas Serious Sam 2 (Bin\Sam2Game.dll est introuvable)."
+          LangString NotSs2 ${LANG_SPANISH} "Esta carpeta no contiene Serious Sam 2 (falta Bin\Sam2Game.dll)."
+          LangString NotSs2 ${LANG_GERMAN} "Dieser Ordner enthält Serious Sam 2 nicht (Bin\Sam2Game.dll fehlt)."
+          LangString NotSs2 ${LANG_RUSSIAN} "В этой папке нет Serious Sam 2 (не найден Bin\Sam2Game.dll)."
+
+          LangString NeedAdmin ${LANG_ENGLISH} "Administrator rights are needed to write in this folder, and the installer could not get them."
+          LangString NeedAdmin ${LANG_FRENCH} "Il faut les droits d'administrateur pour écrire dans ce dossier, et l'installateur n'a pas pu les obtenir."
+          LangString NeedAdmin ${LANG_SPANISH} "Se necesitan derechos de administrador para escribir en esta carpeta, y el instalador no pudo obtenerlos."
+          LangString NeedAdmin ${LANG_GERMAN} "Zum Schreiben in diesen Ordner sind Administratorrechte nötig, und das Installationsprogramm konnte sie nicht erhalten."
+          LangString NeedAdmin ${LANG_RUSSIAN} "Для записи в эту папку нужны права администратора, но установщик не смог их получить."
+
+          LangString IniKept ${LANG_ENGLISH} "Existing Bin\SS2CoopLobby.ini kept."
+          LangString IniKept ${LANG_FRENCH} "Bin\SS2CoopLobby.ini existant conservé."
+          LangString IniKept ${LANG_SPANISH} "Se conserva el Bin\SS2CoopLobby.ini existente."
+          LangString IniKept ${LANG_GERMAN} "Vorhandene Bin\SS2CoopLobby.ini beibehalten."
+          LangString IniKept ${LANG_RUSSIAN} "Существующий Bin\SS2CoopLobby.ini сохранен."
+
+          LangString ModCreated ${LANG_ENGLISH} "Content\SeriousSam2.mod created."
+          LangString ModCreated ${LANG_FRENCH} "Content\SeriousSam2.mod créé."
+          LangString ModCreated ${LANG_SPANISH} "Content\SeriousSam2.mod creado."
+          LangString ModCreated ${LANG_GERMAN} "Content\SeriousSam2.mod erstellt."
+          LangString ModCreated ${LANG_RUSSIAN} "Создан Content\SeriousSam2.mod."
+
+          LangString ModAdded ${LANG_ENGLISH} "SS2CoopLobby added to Content\SeriousSam2.mod (previous file: SeriousSam2.mod.bak)."
+          LangString ModAdded ${LANG_FRENCH} "SS2CoopLobby ajouté à Content\SeriousSam2.mod (ancien fichier : SeriousSam2.mod.bak)."
+          LangString ModAdded ${LANG_SPANISH} "SS2CoopLobby añadido a Content\SeriousSam2.mod (archivo anterior: SeriousSam2.mod.bak)."
+          LangString ModAdded ${LANG_GERMAN} "SS2CoopLobby zu Content\SeriousSam2.mod hinzugefügt (vorherige Datei: SeriousSam2.mod.bak)."
+          LangString ModAdded ${LANG_RUSSIAN} "SS2CoopLobby добавлен в Content\SeriousSam2.mod (прежний файл: SeriousSam2.mod.bak)."
+
+          LangString ModPresent ${LANG_ENGLISH} "Content\SeriousSam2.mod already lists SS2CoopLobby."
+          LangString ModPresent ${LANG_FRENCH} "Content\SeriousSam2.mod contient déjà SS2CoopLobby."
+          LangString ModPresent ${LANG_SPANISH} "Content\SeriousSam2.mod ya incluye SS2CoopLobby."
+          LangString ModPresent ${LANG_GERMAN} "Content\SeriousSam2.mod enthält SS2CoopLobby bereits."
+          LangString ModPresent ${LANG_RUSSIAN} "Content\SeriousSam2.mod уже содержит SS2CoopLobby."
+
+          LangString ModNoList ${LANG_ENGLISH} "Content\SeriousSam2.mod has no MODULES list ending with $\";$\": add the line SS2CoopLobby to it by hand."
+          LangString ModNoList ${LANG_FRENCH} "Content\SeriousSam2.mod n'a pas de liste MODULES terminée par « ; » : ajoutez-y la ligne SS2CoopLobby à la main."
+          LangString ModNoList ${LANG_SPANISH} "Content\SeriousSam2.mod no tiene una lista MODULES terminada en $\";$\": añada a mano la línea SS2CoopLobby."
+          LangString ModNoList ${LANG_GERMAN} "Content\SeriousSam2.mod hat keine mit $\";$\" endende MODULES-Liste: die Zeile SS2CoopLobby von Hand einfügen."
+          LangString ModNoList ${LANG_RUSSIAN} "В Content\SeriousSam2.mod нет списка MODULES, оканчивающегося на «;»: добавьте строку SS2CoopLobby вручную."
+
+          Function .onInit
+            ; Restarted elevated by DirLeave: "/ELEVATED /D=<folder>".
+            ${GetParameters} $0
+            ClearErrors
+            ${GetOptions} $0 "/ELEVATED" $1
+            ${IfNot} ${Errors}
+              StrCpy $Elevated 1
+            ${EndIf}
+          FunctionEnd
+
+          Function DirPre
+            ${If} $Elevated == 1
+              Abort   ; the folder was chosen before the restart
+            ${EndIf}
+          FunctionEnd
+
+          ; $0 = 1 when the files can be written in Bin and Content.
+          Function CanWrite
+            StrCpy $0 1
+            ClearErrors
+            FileOpen $1 "$INSTDIR\Bin\SS2CoopLobby.tmp" w
+            ${If} ${Errors}
+              StrCpy $0 0
+            ${Else}
+              FileClose $1
+              Delete "$INSTDIR\Bin\SS2CoopLobby.tmp"
+            ${EndIf}
+            ${If} $0 == 1
+            ${AndIf} ${FileExists} "$INSTDIR\Content\*.*"
+              ClearErrors
+              FileOpen $1 "$INSTDIR\Content\SS2CoopLobby.tmp" w
+              ${If} ${Errors}
+                StrCpy $0 0
+              ${Else}
+                FileClose $1
+                Delete "$INSTDIR\Content\SS2CoopLobby.tmp"
+              ${EndIf}
+            ${EndIf}
+          FunctionEnd
+
+          Function DirLeave
+            ${IfNot} ${FileExists} "$INSTDIR\Bin\Sam2Game.dll"
+              MessageBox MB_ICONEXCLAMATION|MB_OK "$(NotSs2)"
+              Abort
+            ${EndIf}
+            Call CanWrite
+            ${If} $0 != 1
+              ClearErrors
+              ExecShell "runas" "$EXEPATH" "/ELEVATED /D=$INSTDIR"
+              ${If} ${Errors}
+                MessageBox MB_ICONSTOP|MB_OK "$(NeedAdmin)"
+                Abort
+              ${EndIf}
+              Quit
+            ${EndIf}
+          FunctionEnd
+
+          ; Adds SS2CoopLobby before the ";" that ends the MODULES list, unless it is listed already: on a
+          ; line of its own when the ";" starts its line (the layout of the game's Sam2Renovation.mod),
+          ; otherwise just before the ";".
+          Function AddModule
+            StrCpy $R9 0   ; 1: SS2CoopLobby is listed
+            StrCpy $R7 0   ; 1: the file has a ";"
+            FileOpen $0 "$INSTDIR\Content\SeriousSam2.mod" r
+            ${Do}
+              ClearErrors
+              FileRead $0 $1
+              ${If} ${Errors}
+                ${ExitDo}
+              ${EndIf}
+              ${StrLoc} $2 $1 "SS2CoopLobby" ">"
+              ${If} $2 != ""
+                StrCpy $R9 1
+              ${EndIf}
+              ${StrLoc} $2 $1 ";" ">"
+              ${If} $2 != ""
+                StrCpy $R7 1
+              ${EndIf}
+            ${Loop}
+            FileClose $0
+            ${If} $R9 == 1
+              DetailPrint "$(ModPresent)"
+              Return
+            ${EndIf}
+            ${If} $R7 == 0
+              DetailPrint "$(ModNoList)"
+              MessageBox MB_ICONEXCLAMATION|MB_OK "$(ModNoList)"
+              Return
+            ${EndIf}
+            CopyFiles /SILENT "$INSTDIR\Content\SeriousSam2.mod" "$INSTDIR\Content\SeriousSam2.mod.bak"
+            FileOpen $0 "$INSTDIR\Content\SeriousSam2.mod.bak" r
+            FileOpen $3 "$INSTDIR\Content\SeriousSam2.mod" w
+            StrCpy $R8 0
+            ${Do}
+              ClearErrors
+              FileRead $0 $1
+              ${If} ${Errors}
+                ${ExitDo}
+              ${EndIf}
+              ${If} $R8 == 0
+                ${StrLoc} $2 $1 ";" ">"
+                ${If} $2 == 0
+                  FileWrite $3 "  SS2CoopLobby$\r$\n"
+                  StrCpy $R8 1
+                ${ElseIf} $2 != ""
+                  StrCpy $4 $1 $2
+                  StrCpy $5 $1 "" $2
+                  StrCpy $1 "$4 SS2CoopLobby $5"
+                  StrCpy $R8 1
+                ${EndIf}
+              ${EndIf}
+              FileWrite $3 $1
+            ${Loop}
+            FileClose $0
+            FileClose $3
+            DetailPrint "$(ModAdded)"
+          FunctionEnd
+
+          Section "Install"
+            SetOutPath "$INSTDIR\Bin"
+            File "${OUT}/Bin/SS2CoopLobby.dll"
+            ${If} ${FileExists} "$INSTDIR\Bin\SS2CoopLobby.ini"
+              DetailPrint "$(IniKept)"
+            ${Else}
+              File "${OUT}/Bin/SS2CoopLobby.ini"
+            ${EndIf}
+            SetOutPath "$INSTDIR\Content"
+            ${If} ${FileExists} "$INSTDIR\Content\SeriousSam2.mod"
+              Call AddModule
+            ${Else}
+              File "${OUT}/Content/SeriousSam2.mod"
+              DetailPrint "$(ModCreated)"
+            ${EndIf}
+          SectionEnd
+          EOF
+          mkdir -p release
+          makensis -INPUTCHARSET UTF8 -V2 -DVERSION="$VERSION" -DOUT="$PWD/out" \
+            -DOUTFILE="$PWD/release/SS2CoopLobby-Setup-$VERSION.exe" "$RUNNER_TEMP/installer.nsi"
+
+      - name: Build the Linux installer
+        run: |
+          stage="$RUNNER_TEMP/linux"
+          mkdir -p "$stage/Bin" "$stage/Content" release
+          cp out/Bin/SS2CoopLobby.dll out/Bin/SS2CoopLobby.ini "$stage/Bin/"
+          cp out/Content/SeriousSam2.mod "$stage/Content/"
+          printf '%s\n' "$VERSION" > "$stage/VERSION"
+          cat > "$stage/setup.sh" <<'EOF'
+          #!/bin/sh
+          # SS2CoopLobby installer for Linux (Serious Sam 2 runs there through Steam Play).
+          # 1. asks for the Serious Sam 2 folder (the one holding Bin and Content): in a window with zenity or
+          #    kdialog on a desktop, otherwise in the terminal; a folder given as argument is used as it is;
+          # 2. asks for administrator rights only when that folder cannot be written;
+          # 3. copies Bin/SS2CoopLobby.dll, and Bin/SS2CoopLobby.ini unless one exists already;
+          # 4. creates Content/SeriousSam2.mod, or adds SS2CoopLobby to an existing one (kept as .bak).
+          here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+          nl='
+          '
+
+          texts() {
+            case $1 in
+            fr)
+              T_ASK="Choisissez le dossier de Serious Sam 2 : celui qui contient les dossiers Bin et Content. Fermez le jeu avant l'installation."
+              T_WHERE="Dans Steam : clic droit sur Serious Sam 2 > Gérer > Parcourir les fichiers locaux."
+              T_PROMPT="Dossier : "
+              T_PICK="Dossier de Serious Sam 2 (celui avec Bin et Content)"
+              T_NOT_SS2="Ce dossier ne contient pas Serious Sam 2 (Bin/Sam2Game.dll est introuvable)."
+              T_NEED_ROOT="Il faut les droits d'administrateur pour écrire dans ce dossier."
+              T_NO_ROOT="Il faut les droits d'administrateur pour écrire dans ce dossier, et l'installateur n'a pas pu les obtenir."
+              T_INI_KEPT="Bin/SS2CoopLobby.ini existant conservé."
+              T_MOD_CREATED="Content/SeriousSam2.mod créé."
+              T_MOD_ADDED="SS2CoopLobby ajouté à Content/SeriousSam2.mod (ancien fichier : SeriousSam2.mod.bak)."
+              T_MOD_PRESENT="Content/SeriousSam2.mod contient déjà SS2CoopLobby."
+              T_MOD_NO_LIST="Content/SeriousSam2.mod n'a pas de liste MODULES terminée par « ; » : ajoutez-y la ligne SS2CoopLobby à la main."
+              T_DONE="Serious Sam 2 Coop Lobby est installé."
+              T_FAILED="L'installation a échoué."
+              T_CANCELLED="Installation annulée."
+              ;;
+            es)
+              T_ASK="Elija la carpeta de Serious Sam 2: la que contiene las carpetas Bin y Content. Cierre el juego antes de instalar."
+              T_WHERE="En Steam: clic derecho en Serious Sam 2 > Administrar > Ver archivos locales."
+              T_PROMPT="Carpeta: "
+              T_PICK="Carpeta de Serious Sam 2 (la que tiene Bin y Content)"
+              T_NOT_SS2="Esta carpeta no contiene Serious Sam 2 (falta Bin/Sam2Game.dll)."
+              T_NEED_ROOT="Se necesitan derechos de administrador para escribir en esta carpeta."
+              T_NO_ROOT="Se necesitan derechos de administrador para escribir en esta carpeta, y el instalador no pudo obtenerlos."
+              T_INI_KEPT="Se conserva el Bin/SS2CoopLobby.ini existente."
+              T_MOD_CREATED="Content/SeriousSam2.mod creado."
+              T_MOD_ADDED="SS2CoopLobby añadido a Content/SeriousSam2.mod (archivo anterior: SeriousSam2.mod.bak)."
+              T_MOD_PRESENT="Content/SeriousSam2.mod ya incluye SS2CoopLobby."
+              T_MOD_NO_LIST="Content/SeriousSam2.mod no tiene una lista MODULES terminada en \";\": añada a mano la línea SS2CoopLobby."
+              T_DONE="Serious Sam 2 Coop Lobby está instalado."
+              T_FAILED="La instalación ha fallado."
+              T_CANCELLED="Instalación cancelada."
+              ;;
+            de)
+              T_ASK="Wählen Sie den Ordner von Serious Sam 2, der die Ordner Bin und Content enthält. Schließen Sie das Spiel vor der Installation."
+              T_WHERE="In Steam: Rechtsklick auf Serious Sam 2 > Verwalten > Lokale Dateien durchsuchen."
+              T_PROMPT="Ordner: "
+              T_PICK="Ordner von Serious Sam 2 (der mit Bin und Content)"
+              T_NOT_SS2="Dieser Ordner enthält Serious Sam 2 nicht (Bin/Sam2Game.dll fehlt)."
+              T_NEED_ROOT="Zum Schreiben in diesen Ordner sind Administratorrechte nötig."
+              T_NO_ROOT="Zum Schreiben in diesen Ordner sind Administratorrechte nötig, und das Installationsprogramm konnte sie nicht erhalten."
+              T_INI_KEPT="Vorhandene Bin/SS2CoopLobby.ini beibehalten."
+              T_MOD_CREATED="Content/SeriousSam2.mod erstellt."
+              T_MOD_ADDED="SS2CoopLobby zu Content/SeriousSam2.mod hinzugefügt (vorherige Datei: SeriousSam2.mod.bak)."
+              T_MOD_PRESENT="Content/SeriousSam2.mod enthält SS2CoopLobby bereits."
+              T_MOD_NO_LIST="Content/SeriousSam2.mod hat keine mit \";\" endende MODULES-Liste: die Zeile SS2CoopLobby von Hand einfügen."
+              T_DONE="Serious Sam 2 Coop Lobby ist installiert."
+              T_FAILED="Die Installation ist fehlgeschlagen."
+              T_CANCELLED="Installation abgebrochen."
+              ;;
+            ru)
+              T_ASK="Выберите папку Serious Sam 2 — ту, в которой находятся папки Bin и Content. Перед установкой закройте игру."
+              T_WHERE="В Steam: щелкните правой кнопкой по Serious Sam 2 > Управление > Просмотреть локальные файлы."
+              T_PROMPT="Папка: "
+              T_PICK="Папка Serious Sam 2 (с папками Bin и Content)"
+              T_NOT_SS2="В этой папке нет Serious Sam 2 (не найден Bin/Sam2Game.dll)."
+              T_NEED_ROOT="Для записи в эту папку нужны права администратора."
+              T_NO_ROOT="Для записи в эту папку нужны права администратора, но установщик не смог их получить."
+              T_INI_KEPT="Существующий Bin/SS2CoopLobby.ini сохранен."
+              T_MOD_CREATED="Создан Content/SeriousSam2.mod."
+              T_MOD_ADDED="SS2CoopLobby добавлен в Content/SeriousSam2.mod (прежний файл: SeriousSam2.mod.bak)."
+              T_MOD_PRESENT="Content/SeriousSam2.mod уже содержит SS2CoopLobby."
+              T_MOD_NO_LIST="В Content/SeriousSam2.mod нет списка MODULES, оканчивающегося на «;»: добавьте строку SS2CoopLobby вручную."
+              T_DONE="Serious Sam 2 Coop Lobby установлен."
+              T_FAILED="Установка не удалась."
+              T_CANCELLED="Установка отменена."
+              ;;
+            *)
+              T_ASK="Select the Serious Sam 2 folder: the one that contains the Bin and Content folders. Close the game before installing."
+              T_WHERE="In Steam: right-click Serious Sam 2 > Manage > Browse local files."
+              T_PROMPT="Folder: "
+              T_PICK="Serious Sam 2 folder (the one with Bin and Content)"
+              T_NOT_SS2="This folder does not contain Serious Sam 2 (Bin/Sam2Game.dll is missing)."
+              T_NEED_ROOT="Administrator rights are needed to write in this folder."
+              T_NO_ROOT="Administrator rights are needed to write in this folder, and the installer could not get them."
+              T_INI_KEPT="Existing Bin/SS2CoopLobby.ini kept."
+              T_MOD_CREATED="Content/SeriousSam2.mod created."
+              T_MOD_ADDED="SS2CoopLobby added to Content/SeriousSam2.mod (previous file: SeriousSam2.mod.bak)."
+              T_MOD_PRESENT="Content/SeriousSam2.mod already lists SS2CoopLobby."
+              T_MOD_NO_LIST="Content/SeriousSam2.mod has no MODULES list ending with \";\": add the line SS2CoopLobby to it by hand."
+              T_DONE="Serious Sam 2 Coop Lobby is installed."
+              T_FAILED="The installation failed."
+              T_CANCELLED="Installation cancelled."
+              ;;
+            esac
+          }
+
+          say() { printf '%s\n' "$1"; }
+
+          # Copies the files into the game folder $1 and prints what it did; fails when something cannot be
+          # written.
+          install_files() {
+            bin=$1/Bin
+            mod=$1/Content/SeriousSam2.mod
+            mkdir -p "$1/Content" &&
+              cp -f "$here/Bin/SS2CoopLobby.dll" "$bin/SS2CoopLobby.dll.new" &&
+              mv -f "$bin/SS2CoopLobby.dll.new" "$bin/SS2CoopLobby.dll" || return 1
+            if [ -e "$bin/SS2CoopLobby.ini" ]; then
+              say "$T_INI_KEPT"
+            else
+              cp "$here/Bin/SS2CoopLobby.ini" "$bin/SS2CoopLobby.ini" || return 1
+            fi
+            if [ ! -e "$mod" ]; then
+              cp "$here/Content/SeriousSam2.mod" "$mod" || return 1
+              say "$T_MOD_CREATED"
+            elif grep -qi SS2CoopLobby "$mod"; then
+              say "$T_MOD_PRESENT"
+            elif grep -q ';' "$mod"; then
+              # SS2CoopLobby goes before the ";" that ends the MODULES list: on a line of its own when the ";"
+              # starts its line (the layout of the game's Sam2Renovation.mod), otherwise just before the ";".
+              cp -f "$mod" "$mod.bak" &&
+                awk '!done && (i = index($0, ";")) {
+                       if (i == 1) print "  SS2CoopLobby" (/\r$/ ? "\r" : "")
+                       else $0 = substr($0, 1, i - 1) " SS2CoopLobby " substr($0, i)
+                       done = 1
+                     }
+                     { print }' "$mod.bak" > "$mod.new" &&
+                mv -f "$mod.new" "$mod" || return 1
+              say "$T_MOD_ADDED"
+            else
+              say "$T_MOD_NO_LIST"
+              return 1
+            fi
+          }
+
+          # Run again through pkexec or sudo when the folder needs administrator rights.
+          if [ "$1" = --as-root ]; then
+            texts "$3"
+            install_files "$2" || exit 3
+            exit 0
+          fi
+
+          can_write() {
+            [ -w "$1/Bin" ] && { [ -w "$1/Content" ] || { [ ! -e "$1/Content" ] && [ -w "$1" ]; }; }
+          }
+
+          # A typed or pasted folder, without the quotes, escapes and spaces that a terminal adds to a dropped
+          # folder; ~ and relative paths are expanded (USER_PWD: the folder the installer was started from).
+          clean_path() {
+            p=$1
+            while :; do
+              case $p in
+                ' '*) p=${p# } ;;
+                *' ') p=${p% } ;;
+                *) break ;;
+              esac
+            done
+            case $p in
+              \'*\') p=${p#\'}; p=${p%\'} ;;
+              \"*\") p=${p#\"}; p=${p%\"} ;;
+            esac
+            case $p in file://*) p=$(printf '%s\n' "${p#file://}" | sed 's/%20/ /g') ;; esac
+            case $p in *\\*) p=$(printf '%s\n' "$p" | sed 's/\\\(.\)/\1/g') ;; esac
+            case $p in '~') p=$HOME ;; '~/'*) p=$HOME/${p#'~/'} ;; esac
+            case $p in '' | /*) ;; *) p=${USER_PWD:-$PWD}/$p ;; esac
+            while :; do case $p in ?*/) p=${p%/} ;; *) break ;; esac; done
+            printf '%s\n' "$p"
+          }
+
+          # Prints the chosen folder; fails when the user cancels.
+          ask_dir() {
+            case $ui in
+              zenity) zenity --file-selection --directory --title="$T_PICK" --filename="$start/" 2>/dev/null ;;
+              kdialog) kdialog --title "$T_PICK" --getexistingdirectory "$start" 2>/dev/null ;;
+              *)
+                printf '\n%s\n%s\n%s' "$T_ASK" "$T_WHERE" "$T_PROMPT" >&2
+                IFS= read -r line || { printf '\n' >&2; return 1; }
+                clean_path "$line"
+                ;;
+            esac
+          }
+
+          # Prints a message, and shows it in a window too with zenity or kdialog. $1: info or error.
+          show() {
+            say "$2"
+            case $ui in
+              zenity) zenity "--$1" --no-markup --title="$title" --text="$2" 2>/dev/null ;;
+              kdialog)
+                if [ "$1" = error ]; then
+                  kdialog --title "$title" --error "$2"
+                else
+                  kdialog --title "$title" --msgbox "$2"
+                fi 2>/dev/null
+                ;;
+            esac
+          }
+
+          loc=${LC_ALL:-${LC_MESSAGES:-$LANG}}
+          case $loc in fr*) lang=fr ;; es*) lang=es ;; de*) lang=de ;; ru*) lang=ru ;; *) lang=en ;; esac
+          texts "$lang"
+          title="Serious Sam 2 Coop Lobby $(cat "$here/VERSION" 2>/dev/null)"
+
+          ui=tty
+          if [ $# -gt 0 ]; then
+            ui=args
+          elif [ -n "$DISPLAY$WAYLAND_DISPLAY" ]; then
+            case $XDG_CURRENT_DESKTOP in *KDE*) command -v kdialog >/dev/null && ui=kdialog ;; esac
+            if [ $ui = tty ]; then
+              if command -v zenity >/dev/null; then
+                ui=zenity
+              elif command -v kdialog >/dev/null; then
+                ui=kdialog
+              fi
+            fi
+          fi
+
+          # The folder window opens in Steam's game library when there is one.
+          start=$HOME
+          for d in "$HOME/.local/share/Steam/steamapps/common" \
+            "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common"; do
+            if [ -d "$d" ]; then
+              start=$d
+              break
+            fi
+          done
+
+          if [ $ui = args ]; then
+            dir=$(clean_path "$1")
+            if [ ! -f "$dir/Bin/Sam2Game.dll" ]; then
+              show error "$T_NOT_SS2"
+              exit 1
+            fi
+          else
+            if [ $ui = tty ]; then say "$title"; fi
+            while :; do
+              dir=$(ask_dir) || { say "$T_CANCELLED"; exit 1; }
+              if [ -f "$dir/Bin/Sam2Game.dll" ]; then break; fi
+              show error "$T_NOT_SS2"
+            done
+          fi
+
+          if can_write "$dir"; then
+            report=$(install_files "$dir") && status=0 || status=3
+          else
+            say "$T_NEED_ROOT"
+            status=126
+            if [ $ui != tty ] && [ $ui != args ] && command -v pkexec >/dev/null; then
+              report=$(pkexec /bin/sh "$here/setup.sh" --as-root "$dir" "$lang"); status=$?
+            elif [ -t 0 ] && command -v sudo >/dev/null; then
+              report=$(sudo /bin/sh "$here/setup.sh" --as-root "$dir" "$lang"); status=$?
+            fi
+          fi
+
+          case $status in
+            0) show info "$T_DONE${report:+$nl$report}" ;;
+            3) show error "${report:+$report$nl}$T_FAILED" ;;
+            *) show error "$T_NO_ROOT" ;;
+          esac
+          [ $status = 0 ]
+          EOF
+          makeself --nox11 "$stage" "release/SS2CoopLobby-Setup-$VERSION.sh" \
+            "Serious Sam 2 Coop Lobby $VERSION" sh ./setup.sh
+
+      - name: Build the zip
+        run: |
+          stage="$RUNNER_TEMP/SS2CoopLobby-$VERSION"
+          mkdir -p "$stage/Bin" "$stage/Content" release
+          cp out/Bin/SS2CoopLobby.dll out/Bin/SS2CoopLobby.ini "$stage/Bin/"
+          cp out/Content/SeriousSam2.mod "$stage/Content/"
+          # INSTALL.txt with a UTF-8 BOM and CRLF line ends, for every Windows text editor
+          { printf '\357\273\277'; sed 's/\r$//; s/$/\r/' dist/INSTALL.txt; } > "$stage/INSTALL.txt"
+          cp LICENSE "$stage/"
+          (cd "$RUNNER_TEMP" && zip -r "$GITHUB_WORKSPACE/release/SS2CoopLobby-$VERSION.zip" "SS2CoopLobby-$VERSION")
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SS2CoopLobby-${{ env.VERSION }}
+          path: release/
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --title "SS2CoopLobby $GITHUB_REF_NAME" --generate-notes
