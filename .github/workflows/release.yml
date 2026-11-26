@@ -276,6 +276,9 @@ jobs:
           # 2. asks for administrator rights only when that folder cannot be written;
           # 3. copies Bin/SS2CoopLobby.dll, and Bin/SS2CoopLobby.ini unless one exists already;
           # 4. creates Content/SeriousSam2.mod, or adds SS2CoopLobby to an existing one (kept as .bak).
+          # makeself starts this script with umask 077: the installed files must stay readable by the game,
+          # like the game's own files.
+          umask 022
           here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
           nl='
           '
